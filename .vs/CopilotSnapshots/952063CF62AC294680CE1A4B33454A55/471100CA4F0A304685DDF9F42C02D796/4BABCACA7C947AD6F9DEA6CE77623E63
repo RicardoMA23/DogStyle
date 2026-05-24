@@ -1,0 +1,47 @@
+﻿@page "/mascotas"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Db
+
+<PageTitle>Mascotas</PageTitle>
+
+<h2>Mascotas registradas</h2>
+
+<div class="card">
+    <a class="btn" href="/mascotas/nuevo">Nueva mascota</a>
+    <table class="table" style="margin-top:1rem;">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Raza</th>
+                <th>Edad</th>
+                <th>Tamaño</th>
+                <th>Dueño</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in mascotas)
+            {
+                <tr>
+                    <td>@m.Nombre</td>
+                    <td>@m.Raza</td>
+                    <td>@m.Edad</td>
+                    <td>@m.Tamano</td>
+                    <td>@m.Duenio?.Nombre</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code{
+    private List<Mascota> mascotas = new();
+
+    protected override void OnInitialized()
+    {
+        // Cargar mascotas con dueño
+        mascotas = Db.Mascotas
+            .Include(m => m.Duenio)
+            .ToList();
+    }
+}

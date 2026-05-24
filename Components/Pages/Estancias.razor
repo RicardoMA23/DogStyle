@@ -1,0 +1,413 @@
+﻿@page "/estancias"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<PageTitle>Estancias</PageTitle>
+
+<h2>Estancias</h2>
+
+<div class="card p-3 mb-4">
+
+    <h4>
+        @(editandoEstancia
+            ? "Editar estancia"
+            : "Nueva estancia")
+    </h4>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <EditForm Model="nuevaEstancia"
+              OnValidSubmit="GuardarEstancia">
+
+        <div class="mb-3">
+            <label class="form-label">
+                Mascota
+            </label>
+
+            <InputSelect class="form-control"
+                         @bind-Value="nuevaEstancia.MascotaId">
+
+                <option value="0">
+                    Selecciona una mascota
+                </option>
+
+                @foreach (var mascota in mascotas)
+                {
+                    <option value="@mascota.Id">
+                        @mascota.Nombre
+                    </option>
+                }
+
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Fecha de ingreso
+            </label>
+
+            <div class="d-flex gap-2">
+
+                <InputDate TValue="DateTime"
+                           class="form-control"
+                           @bind-Value="fechaIngresoDate" />
+
+                <InputDate TValue="TimeOnly?"
+                           Type="InputDateType.Time"
+                           class="form-control"
+                           @bind-Value="fechaIngresoTime" />
+
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Fecha de egreso
+            </label>
+
+            <div class="d-flex gap-2">
+
+                <InputDate TValue="DateTime?"
+                           class="form-control"
+                           @bind-Value="fechaEgresoDate" />
+
+                <InputDate TValue="TimeOnly?"
+                           Type="InputDateType.Time"
+                           class="form-control"
+                           @bind-Value="fechaEgresoTime" />
+
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Observaciones
+            </label>
+
+            <InputTextArea class="form-control"
+                           @bind-Value="nuevaEstancia.Observaciones" />
+        </div>
+
+        <button type="submit"
+                class="btn btn-primary">
+
+            @(editandoEstancia
+                ? "Actualizar estancia"
+                : "Guardar estancia")
+
+        </button>
+
+        @if (editandoEstancia)
+        {
+            <button type="button"
+                    class="btn btn-secondary ms-2"
+                    @onclick="CancelarEditarEstancia">
+
+                Cancelar
+
+            </button>
+        }
+
+    </EditForm>
+
+</div>
+
+<div class="card p-3">
+
+    <h4>Estancias registradas</h4>
+
+    <table class="table table-striped">
+
+        <thead>
+            <tr>
+                <th>Mascota</th>
+                <th>Ingreso</th>
+                <th>Egreso</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach (var estancia in estancias)
+            {
+                <tr>
+
+                    <td>
+                        @estancia.Mascota?.Nombre
+                    </td>
+
+                    <td>
+                        @estancia.FechaIngreso.ToString("dd/MM/yyyy HH:mm")
+                    </td>
+
+                    <td>
+                        @(estancia.FechaEgreso.HasValue
+                            ? estancia.FechaEgreso.Value.ToString("dd/MM/yyyy HH:mm")
+                            : "Sin salida")
+                    </td>
+
+                    <td>
+                        @estancia.Observaciones
+                    </td>
+
+                    <td>
+
+                        <button class="btn btn-warning btn-sm me-2"
+                                @onclick="() => EditarEstancia(estancia)">
+
+                            Editar
+
+                        </button>
+
+                        <button class="btn btn-danger btn-sm"
+                                @onclick="() => EliminarEstancia(estancia.Id)">
+
+                            Eliminar
+
+                        </button>
+
+                    </td>
+
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+
+</div>
+
+@code {
+
+    private List<Estancia> estancias = new();
+    private List<Mascota> mascotas = new();
+
+    private Estancia nuevaEstancia = new();
+
+    private bool editandoEstancia = false;
+    private int editandoEstanciaId = 0;
+
+    private DateTime fechaIngresoDate =
+        DateTime.Today;
+
+    private TimeOnly? fechaIngresoTime =
+        new TimeOnly(12, 0);
+
+    private DateTime? fechaEgresoDate =
+        null;
+
+    private TimeOnly? fechaEgresoTime =
+        new TimeOnly(12, 0);
+
+    private string errorMessage =
+        string.Empty;
+
+    protected override void OnInitialized()
+    {
+        CargarDatos();
+    }
+
+    private void CargarDatos()
+    {
+        estancias = Db.Estancias
+            .Include(e => e.Mascota)
+            .OrderByDescending(e => e.FechaIngreso)
+            .ToList();
+
+        mascotas = Db.Mascotas
+            .OrderBy(m => m.Nombre)
+            .ToList();
+    }
+
+    private async Task GuardarEstancia()
+    {
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (nuevaEstancia.MascotaId == 0)
+            {
+                errorMessage =
+                    "Selecciona una mascota.";
+
+                return;
+            }
+
+            DateTime ingresoCompleto =
+                CombineDateAndTime(
+                    fechaIngresoDate,
+                    fechaIngresoTime
+                );
+
+            DateTime? egresoCompleto =
+                null;
+
+            if (fechaEgresoDate.HasValue)
+            {
+                egresoCompleto =
+                    CombineDateAndTime(
+                        fechaEgresoDate.Value,
+                        fechaEgresoTime
+                    );
+            }
+
+            if (editandoEstancia)
+            {
+                var estanciaExistente =
+                    await Db.Estancias
+                        .FindAsync(editandoEstanciaId);
+
+                if (estanciaExistente != null)
+                {
+                    estanciaExistente.MascotaId =
+                        nuevaEstancia.MascotaId;
+
+                    estanciaExistente.FechaIngreso =
+                        ingresoCompleto;
+
+                    estanciaExistente.FechaEgreso =
+                        egresoCompleto;
+
+                    estanciaExistente.Observaciones =
+                        nuevaEstancia.Observaciones;
+                }
+            }
+            else
+            {
+                nuevaEstancia.FechaIngreso =
+                    ingresoCompleto;
+
+                nuevaEstancia.FechaEgreso =
+                    egresoCompleto;
+
+                Db.Estancias.Add(
+                    nuevaEstancia
+                );
+            }
+
+            await Db.SaveChangesAsync();
+
+            LimpiarFormulario();
+            CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Error al guardar: {ex.Message}";
+        }
+    }
+
+    private void EditarEstancia(
+        Estancia estancia)
+    {
+        editandoEstancia = true;
+
+        editandoEstanciaId =
+            estancia.Id;
+
+        nuevaEstancia =
+            new Estancia
+            {
+                MascotaId =
+                    estancia.MascotaId,
+
+                Observaciones =
+                    estancia.Observaciones
+            };
+
+        fechaIngresoDate =
+            estancia.FechaIngreso.Date;
+
+        fechaIngresoTime =
+            TimeOnly.FromDateTime(
+                estancia.FechaIngreso
+            );
+
+        if (estancia.FechaEgreso.HasValue)
+        {
+            fechaEgresoDate =
+                estancia.FechaEgreso.Value.Date;
+
+            fechaEgresoTime =
+                TimeOnly.FromDateTime(
+                    estancia.FechaEgreso.Value
+                );
+        }
+        else
+        {
+            fechaEgresoDate = null;
+
+            fechaEgresoTime =
+                new TimeOnly(12, 0);
+        }
+    }
+
+    private async Task EliminarEstancia(
+        int id)
+    {
+        var estancia =
+            await Db.Estancias
+                .FindAsync(id);
+
+        if (estancia != null)
+        {
+            Db.Estancias.Remove(estancia);
+
+            await Db.SaveChangesAsync();
+
+            CargarDatos();
+        }
+    }
+
+    private void CancelarEditarEstancia()
+    {
+        editandoEstancia = false;
+        editandoEstanciaId = 0;
+
+        LimpiarFormulario();
+    }
+
+    private void LimpiarFormulario()
+    {
+        nuevaEstancia =
+            new Estancia();
+
+        fechaIngresoDate =
+            DateTime.Today;
+
+        fechaIngresoTime =
+            new TimeOnly(12, 0);
+
+        fechaEgresoDate =
+            null;
+
+        fechaEgresoTime =
+            new TimeOnly(12, 0);
+
+        errorMessage =
+            string.Empty;
+    }
+
+    private DateTime CombineDateAndTime(
+        DateTime date,
+        TimeOnly? time)
+    {
+        if (time.HasValue)
+        {
+            return date.Date.Add(
+                time.Value.ToTimeSpan()
+            );
+        }
+
+        return date.Date;
+    }
+}

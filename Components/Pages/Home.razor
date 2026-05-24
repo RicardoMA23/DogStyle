@@ -1,0 +1,201 @@
+﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Context
+
+<PageTitle>Dashboard</PageTitle>
+
+<h2>Dashboard Veterinaria</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias en curso</h4>
+
+            @if (estanciasEnCurso.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasEnCurso)
+                    {
+                        <li>
+                            <a href="#" @onclick="async () => await ShowDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias activas.</p>
+            }
+        </div>
+
+@* Panel lateral (drawer) de detalles *@
+@if (mostrarModal)
+{
+    <style>
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1040;
+        }
+
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 380px;
+            max-width: 100%;
+            background: #fff;
+            box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+            transform: translateX(0);
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            transition: transform 200ms ease-in-out;
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .drawer-body {
+            padding: 1rem;
+            overflow: auto;
+            flex: 1 1 auto;
+        }
+
+        .drawer-footer {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #e9ecef;
+            text-align: right;
+        }
+
+        .drawer-close {
+            background: transparent;
+            border: none;
+            font-size: 1.25rem;
+        }
+    </style>
+
+    <div class="drawer-overlay" @onclick="OcultarModal"></div>
+
+    <aside class="drawer-panel" role="dialog" aria-modal="true">
+        <div class="drawer-header">
+            <h5 class="m-0">Detalles de la estancia</h5>
+            <button class="drawer-close" aria-label="Cerrar" @onclick="OcultarModal">&times;</button>
+        </div>
+
+        <div class="drawer-body">
+            @if (detalleEstancia != null)
+            {
+                <div class="mb-2"><strong>Mascota:</strong> @detalleEstancia.Mascota?.Nombre</div>
+                <div class="mb-2"><strong>Ingreso:</strong> @detalleEstancia.FechaIngreso.ToString("g")</div>
+                <div class="mb-2"><strong>Egreso:</strong> @(detalleEstancia.FechaEgreso?.ToString("g") ?? "-")</div>
+                <div class="mb-2"><strong>Notas:</strong><div class="mt-1">@detalleEstancia.Observaciones</div></div>
+
+                @if (detalleEstancia.Cuidados != null && detalleEstancia.Cuidados.Any())
+                {
+                    <h6 class="mt-3">Cuidados</h6>
+                    <ul>
+                        @foreach (var c in detalleEstancia.Cuidados)
+                        {
+                            <li>@c.Descripcion</li>
+                        }
+                    </ul>
+                }
+            }
+            else
+            {
+                <p>Cargando...</p>
+            }
+        </div>
+
+        <div class="drawer-footer">
+            <button class="btn btn-secondary" @onclick="OcultarModal">Cerrar</button>
+        </div>
+    </aside>
+}
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias agendadas</h4>
+
+            @if (estanciasAgendadas.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasAgendadas)
+                    {
+                        <li>
+                            <a href="#" @onclick="async () => await ShowDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Fecha de ingreso:
+                                @estancia.FechaIngreso.ToShortDateString()
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias programadas.</p>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private List<Estancia> estanciasEnCurso = new();
+    private List<Estancia> estanciasAgendadas = new();
+    private Estancia? detalleEstancia;
+    private bool mostrarModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoy = DateTime.Today;
+
+        estanciasEnCurso = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e =>
+                e.FechaIngreso <= hoy &&
+                (e.FechaEgreso == null || e.FechaEgreso >= hoy))
+            .ToListAsync();
+
+        estanciasAgendadas = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e => e.FechaIngreso > hoy)
+            .ToListAsync();
+    }
+
+    private async Task ShowDetalles(int id)
+    {
+        detalleEstancia = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Include(e => e.Cuidados)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        mostrarModal = true;
+        StateHasChanged();
+    }
+
+    private void OcultarModal()
+    {
+        mostrarModal = false;
+        detalleEstancia = null;
+    }
+}

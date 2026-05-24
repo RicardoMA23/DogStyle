@@ -1,0 +1,34 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+
+namespace PIASISTINFO.Models
+{
+    public class Mascota
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string Nombre { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string Raza { get; set; } = string.Empty;
+
+        public int Edad { get; set; }
+
+        [MaxLength(20)]
+        public string Tamano { get; set; } = string.Empty;
+
+        public string Observaciones { get; set; } = string.Empty;
+
+        public string EstadoSalud { get; set; } = string.Empty;
+
+        // Relación con dueño
+        public int? DuenioId { get; set; }
+        public Duenio? Duenio { get; set; }
+
+        public List<Estancia> Estancias { get; set; } = new();
+    }
+}

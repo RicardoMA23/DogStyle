@@ -1,0 +1,66 @@
+﻿@inherits LayoutComponentBase
+@using PIASISTINFO.Components.Shared
+
+<div class="app-container">
+
+    <header class="app-header">
+        <h1>DogStyle</h1>
+    </header>
+
+    <div class="app-layout">
+
+        <aside class="app-nav">
+            <nav class="nav-main">
+
+                <div class="brand">
+                    DogStyle
+                </div>
+
+                <ul>
+
+                    <li>
+                        <NavLink href="/" Match="NavLinkMatch.All">
+                            Inicio
+                        </NavLink>
+                    </li>
+
+                    <li>
+                        <NavLink href="/duenos">
+                            Dueños
+                        </NavLink>
+                    </li>
+
+                    <li>
+                        <NavLink href="/mascotas">
+                            Mascotas
+                        </NavLink>
+                    </li>
+
+                    <li>
+                        <NavLink href="/estancias">
+                            Estancias
+                        </NavLink>
+                    </li>
+
+                </ul>
+
+            </nav>
+        </aside>
+
+        <main class="app-main">
+            @Body
+        </main>
+
+    </div>
+
+    <footer class="app-footer">
+        © DogStyle
+    </footer>
+
+</div>
+
+<div id="blazor-error-ui">
+    Ha ocurrido un error inesperado.
+    <a href="" class="reload">Recargar</a>
+    <a class="dismiss">✕</a>
+</div>

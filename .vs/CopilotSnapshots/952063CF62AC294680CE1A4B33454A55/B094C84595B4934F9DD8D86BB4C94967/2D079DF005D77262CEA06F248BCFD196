@@ -1,0 +1,44 @@
+﻿@page "/duenos"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Db
+
+<PageTitle>Dueños</PageTitle>
+
+<h2>Dueños registrados</h2>
+
+<div class="card">
+    <a class="btn" href="/duenos/nuevo">Nuevo dueño</a>
+    <table class="table" style="margin-top:1rem;">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Contacto</th>
+                <th>Mascotas</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in duenos)
+            {
+                <tr>
+                    <td>@d.Nombre</td>
+                    <td>@d.Telefono</td>
+                    <td>@d.Contacto</td>
+                    <td>@(d.Mascotas?.Count ?? 0)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code{
+    private List<Duenio> duenos = new();
+
+    protected override void OnInitialized()
+    {
+        duenos = Db.Duenios
+            .Include(d => d.Mascotas)
+            .ToList();
+    }
+}

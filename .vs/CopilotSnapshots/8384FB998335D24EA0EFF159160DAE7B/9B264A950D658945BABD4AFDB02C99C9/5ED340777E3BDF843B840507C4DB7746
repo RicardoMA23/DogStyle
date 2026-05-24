@@ -1,0 +1,85 @@
+﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Context
+
+<PageTitle>Dashboard</PageTitle>
+
+<h2>Dashboard Veterinaria</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias en curso</h4>
+
+            @if (estanciasEnCurso.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasEnCurso)
+                    {
+                        <li>
+                            <strong>@estancia.Mascota.Nombre</strong>
+                            <br />
+                            Ingreso: @estancia.FechaIngreso.ToShortDateString()
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias activas.</p>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias agendadas</h4>
+
+            @if (estanciasAgendadas.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasAgendadas)
+                    {
+                        <li>
+                            <strong>@estancia.Mascota.Nombre</strong>
+                            <br />
+                            Fecha de ingreso:
+                            @estancia.FechaIngreso.ToShortDateString()
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias programadas.</p>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private List<Estancia> estanciasEnCurso = new();
+    private List<Estancia> estanciasAgendadas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoy = DateTime.Today;
+
+        estanciasEnCurso = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e =>
+                e.FechaIngreso <= hoy &&
+                (e.FechaEgreso == null || e.FechaEgreso >= hoy))
+            .ToListAsync();
+
+        estanciasAgendadas = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e => e.FechaIngreso > hoy)
+            .ToListAsync();
+    }
+}

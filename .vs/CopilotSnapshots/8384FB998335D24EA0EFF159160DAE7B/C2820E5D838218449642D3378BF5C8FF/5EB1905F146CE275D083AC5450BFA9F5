@@ -1,0 +1,113 @@
+﻿@page "/duenos"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject AppDbContext Db
+
+<PageTitle>Dueños</PageTitle>
+<style>
+    /* Asegura que los botones de acción sean visibles incluso si otras reglas los ocultan */
+    .action-btn {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+</style>
+
+<h2>Dueños registrados</h2>
+
+<div class="card">
+
+    <h4>Nuevo dueño</h4>
+
+    <EditForm Model="nuevoDueno" OnValidSubmit="GuardarDueno">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="field">
+            <label>Nombre</label>
+            <InputText @bind-Value="nuevoDueno.Nombre" />
+        </div>
+
+        <div class="field">
+            <label>Teléfono</label>
+            <InputText @bind-Value="nuevoDueno.Telefono" />
+        </div>
+
+        <div class="field">
+            <label>Contacto</label>
+            <InputText @bind-Value="nuevoDueno.Contacto" />
+        </div>
+
+        <button type="submit" class="btn">
+            Guardar dueño
+        </button>
+
+    </EditForm>
+
+</div>
+
+<div class="card">
+
+    <h4>Dueños registrados</h4>
+
+    <table class="table">
+
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Contacto</th>
+                <th>Mascotas</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var d in duenos)
+            {
+                <tr>
+                    <td>@d.Nombre</td>
+                    <td>@d.Telefono</td>
+                    <td>@d.Contacto</td>
+                    <td>@(d.Mascotas?.Count ?? 0)</td>
+                    <td>
+                        <button type="button" class="btn action-btn" @onclick="() => EditarDueno(d)">Editar</button>
+                        <button type="button" class="btn danger action-btn" @onclick="() => EliminarDueno(d.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+
+</div>
+
+@code {
+
+    private List<Duenio> duenos = new();
+    private Duenio nuevoDueno = new();
+
+    protected override void OnInitialized()
+    {
+        CargarDuenos();
+    }
+
+    private void CargarDuenos()
+    {
+        duenos = Db.Duenios
+            .Include(d => d.Mascotas)
+            .ToList();
+    }
+
+    private async Task GuardarDueno()
+    {
+        Db.Duenios.Add(nuevoDueno);
+        await Db.SaveChangesAsync();
+
+        nuevoDueno = new Duenio();
+
+        CargarDuenos();
+    }
+}

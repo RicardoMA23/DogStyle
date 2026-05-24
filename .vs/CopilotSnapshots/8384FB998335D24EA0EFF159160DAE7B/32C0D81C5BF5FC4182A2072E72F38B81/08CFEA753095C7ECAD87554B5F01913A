@@ -1,0 +1,247 @@
+﻿@page "/mascotas"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject AppDbContext Db
+
+<PageTitle>Mascotas</PageTitle>
+
+<h2>Mascotas registradas</h2>
+
+<div class="card">
+
+    <h4>Nueva mascota</h4>
+
+    <EditForm Model="nuevaMascota" OnValidSubmit="GuardarMascota">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="field">
+            <label>Nombre</label>
+            <InputText @bind-Value="nuevaMascota.Nombre" />
+        </div>
+
+        <div class="field">
+            <label>Raza</label>
+            <InputText @bind-Value="nuevaMascota.Raza" />
+        </div>
+
+        <div class="field">
+            <label>Edad</label>
+            <InputNumber @bind-Value="nuevaMascota.Edad" />
+        </div>
+
+        <div class="field">
+            <label>Tamaño</label>
+            <InputText @bind-Value="nuevaMascota.Tamano" />
+        </div>
+
+        <div class="field">
+            <label>Cuidados específicos</label>
+            <InputTextArea @bind-Value="nuevaMascota.CuidadosEspecificos" />
+        </div>
+
+        <div class="field">
+            <label>Dueño</label>
+
+            <InputSelect @bind-Value="nuevaMascota.DuenioId">
+
+                <option value="0">
+                    Selecciona un dueño
+                </option>
+
+                @foreach (var d in duenos)
+                {
+                    <option value="@d.Id">
+                        @d.Nombre
+                    </option>
+                }
+
+            </InputSelect>
+        </div>
+
+        <button type="submit" class="btn">
+            Guardar mascota
+        </button>
+
+    </EditForm>
+
+</div>
+
+<div class="card">
+
+    @if (mascotaEnEdicion is not null)
+    {
+        <h4>Editar mascota</h4>
+
+        <EditForm Model="mascotaEnEdicion" OnValidSubmit="ActualizarMascota">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="field">
+                <label>Nombre</label>
+                <InputText @bind-Value="mascotaEnEdicion.Nombre" />
+            </div>
+
+            <div class="field">
+                <label>Raza</label>
+                <InputText @bind-Value="mascotaEnEdicion.Raza" />
+            </div>
+
+            <div class="field">
+                <label>Edad</label>
+                <InputNumber @bind-Value="mascotaEnEdicion.Edad" />
+            </div>
+
+            <div class="field">
+                <label>Tamaño</label>
+                <InputText @bind-Value="mascotaEnEdicion.Tamano" />
+            </div>
+
+            <div class="field">
+                <label>Cuidados específicos</label>
+                <InputTextArea @bind-Value="mascotaEnEdicion.CuidadosEspecificos" />
+            </div>
+
+            <div class="field">
+                <label>Dueño</label>
+                <InputSelect @bind-Value="mascotaEnEdicion.DuenioId">
+                    <option value="0">Selecciona un dueño</option>
+                    @foreach (var d in duenos)
+                    {
+                        <option value="@d.Id">@d.Nombre</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <button type="submit" class="btn">Actualizar</button>
+            <button type="button" class="btn" @onclick="CancelarEdicion">Cancelar</button>
+        </EditForm>
+
+    }
+
+
+    <h4>Mascotas registradas</h4>
+
+    <table class="table">
+
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Raza</th>
+                <th>Edad</th>
+                <th>Tamaño</th>
+                <th>Dueño</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var m in mascotas)
+            {
+                <tr>
+                    <td>@m.Nombre</td>
+                    <td>@m.Raza</td>
+                    <td>@m.Edad</td>
+                    <td>@m.Tamano</td>
+                    <td>@m.Duenio?.Nombre</td>
+                    <td>
+                        <button class="btn" @onclick="() => EditarMascota(m)">Editar</button>
+                        <button class="btn danger" @onclick="() => EliminarMascota(m.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+
+</div>
+
+@code {
+
+    private List<Mascota> mascotas = new();
+    private List<Duenio> duenos = new();
+
+    private Mascota nuevaMascota = new();
+
+    protected override void OnInitialized()
+    {
+        CargarDatos();
+    }
+
+    private void CargarDatos()
+    {
+        mascotas = Db.Mascotas
+            .Include(m => m.Duenio)
+            .ToList();
+
+        duenos = Db.Duenios.ToList();
+    }
+
+    private async Task GuardarMascota()
+    {
+        Db.Mascotas.Add(nuevaMascota);
+
+        await Db.SaveChangesAsync();
+
+        nuevaMascota = new Mascota();
+
+        CargarDatos();
+    }
+
+    private Mascota? mascotaEnEdicion;
+
+    private void EditarMascota(Mascota m)
+    {
+        mascotaEnEdicion = new Mascota
+        {
+            Id = m.Id,
+            Nombre = m.Nombre,
+            Raza = m.Raza,
+            Edad = m.Edad,
+            Tamano = m.Tamano,
+            DuenioId = m.DuenioId
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        mascotaEnEdicion = null;
+    }
+
+    private async Task ActualizarMascota()
+    {
+        if (mascotaEnEdicion is null) return;
+
+        var existente = Db.Mascotas.Find(mascotaEnEdicion.Id);
+        if (existente is not null)
+        {
+            existente.Nombre = mascotaEnEdicion.Nombre;
+            existente.Raza = mascotaEnEdicion.Raza;
+            existente.Edad = mascotaEnEdicion.Edad;
+            existente.Tamano = mascotaEnEdicion.Tamano;
+            existente.DuenioId = mascotaEnEdicion.DuenioId;
+
+            await Db.SaveChangesAsync();
+        }
+
+        mascotaEnEdicion = null;
+        CargarDatos();
+    }
+
+    private async Task EliminarMascota(int id)
+    {
+        var m = Db.Mascotas.Find(id);
+        if (m is null) return;
+
+        // eliminar estancias relacionadas
+        var est = Db.Estancias.Where(e => e.MascotaId == id);
+        Db.Estancias.RemoveRange(est);
+
+        Db.Mascotas.Remove(m);
+        await Db.SaveChangesAsync();
+
+        CargarDatos();
+    }
+}

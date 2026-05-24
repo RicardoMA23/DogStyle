@@ -1,0 +1,162 @@
+@page "/duenos"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject AppDbContext Db
+
+<PageTitle>Dueños</PageTitle>
+
+<h2>Dueños registrados</h2>
+
+<div class="card">
+
+<h4>@(editandoDueno ? "Editar dueño" : "Nuevo dueño")</h4>
+
+    <EditForm Model="nuevoDueno" OnValidSubmit="GuardarDueno">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="field">
+            <label>Nombre</label>
+            <InputText @bind-Value="nuevoDueno.Nombre" />
+        </div>
+
+        <div class="field">
+            <label>Teléfono</label>
+            <InputText @bind-Value="nuevoDueno.Telefono" />
+        </div>
+
+        <div class="field">
+            <label>Contacto</label>
+            <InputText @bind-Value="nuevoDueno.Contacto" />
+        </div>
+
+        <button type="submit" class="btn">
+            @(editandoDueno ? "Actualizar dueño" : "Guardar dueño")
+        </button>
+
+        @if (editandoDueno)
+        {
+            <button type="button" class="btn btn-secondary" @onclick="CancelarEditarDueno">
+                Cancelar
+            </button>
+        }
+
+    </EditForm>
+
+</div>
+
+<div class="card">
+
+    <h4>Dueños registrados</h4>
+
+    <table class="table">
+
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Contacto</th>
+                <th>Mascotas</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var d in duenos)
+            {
+                <tr>
+                    <td>@d.Nombre</td>
+                    <td>@d.Telefono</td>
+                    <td>@d.Contacto</td>
+                    <td>@(d.Mascotas?.Count ?? 0)</td>
+                    <td>
+                        <button class="btn btn-sm" @onclick="() => EditarDueno(d)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarDueno(d.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+
+</div>
+
+@code {
+
+    private List<Duenio> duenos = new();
+    private Duenio nuevoDueno = new();
+    private bool editandoDueno = false;
+    private int editandoDuenoId = 0;
+
+    protected override void OnInitialized()
+    {
+        CargarDuenos();
+    }
+
+    private void CargarDuenos()
+    {
+        duenos = Db.Duenios
+            .Include(d => d.Mascotas)
+            .ToList();
+    }
+
+    private async Task GuardarDueno()
+    {
+        if (editandoDueno)
+        {
+            var existente = Db.Duenios.Find(editandoDuenoId);
+            if (existente != null)
+            {
+                existente.Nombre = nuevoDueno.Nombre;
+                existente.Telefono = nuevoDueno.Telefono;
+                existente.Contacto = nuevoDueno.Contacto;
+
+                await Db.SaveChangesAsync();
+            }
+            editandoDueno = false;
+            editandoDuenoId = 0;
+        }
+        else
+        {
+            Db.Duenios.Add(nuevoDueno);
+            await Db.SaveChangesAsync();
+        }
+
+        nuevoDueno = new Duenio();
+
+        CargarDuenos();
+    }
+
+    private void EditarDueno(Duenio d)
+    {
+        editandoDueno = true;
+        editandoDuenoId = d.Id;
+
+        nuevoDueno = new Duenio
+        {
+            Nombre = d.Nombre,
+            Telefono = d.Telefono,
+            Contacto = d.Contacto
+        };
+    }
+
+    private void CancelarEditarDueno()
+    {
+        editandoDueno = false;
+        editandoDuenoId = 0;
+        nuevoDueno = new Duenio();
+    }
+
+    private async Task EliminarDueno(int id)
+    {
+        var d = Db.Duenios.Find(id);
+        if (d != null)
+        {
+            Db.Duenios.Remove(d);
+            await Db.SaveChangesAsync();
+            CargarDuenos();
+        }
+    }
+}

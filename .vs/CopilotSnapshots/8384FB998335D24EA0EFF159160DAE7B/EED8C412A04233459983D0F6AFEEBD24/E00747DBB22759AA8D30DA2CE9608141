@@ -1,0 +1,171 @@
+﻿@page "/estancias"
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject AppDbContext Db
+
+<PageTitle>Estancias</PageTitle>
+
+<h2>Estancias</h2>
+
+<div class="card">
+
+    <h4>Nueva estancia</h4>
+
+    <EditForm Model="nuevaEstancia" OnValidSubmit="GuardarEstancia">
+
+        <div class="field">
+            <label>Mascota</label>
+
+            <InputSelect @bind-Value="nuevaEstancia.MascotaId">
+
+                <option value="0">
+                    Selecciona una mascota
+                </option>
+
+                @foreach (var mascota in mascotas)
+                {
+                    <option value="@mascota.Id">
+                        @mascota.Nombre
+                    </option>
+                }
+
+            </InputSelect>
+        </div>
+
+        <div class="field">
+            <label>Fecha ingreso</label>
+
+            <InputDate @bind-Value="nuevaEstancia.FechaIngreso" />
+        </div>
+
+        <div class="field">
+            <label>Fecha egreso</label>
+
+            <InputDate @bind-Value="nuevaEstancia.FechaEgreso" />
+        </div>
+
+        <button type="submit" class="btn">
+            Guardar estancia
+        </button>
+
+    </EditForm>
+
+</div>
+
+<div class="card">
+
+    <h4>Estancias registradas</h4>
+
+    <table class="table">
+
+        <thead>
+            <tr>
+                <th>Mascota</th>
+                <th>Ingreso</th>
+                <th>Salida</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var estancia in estancias)
+            {
+                <tr>
+                    <td>@estancia.Mascota?.Nombre</td>
+                    <td>@estancia.FechaIngreso.ToShortDateString()</td>
+                    <td>@estancia.FechaEgreso?.ToShortDateString()</td>
+                    <td>
+                        <button class="btn" @onclick="() => EditarEstancia(estancia)">Editar</button>
+                        <button class="btn danger" @onclick="() => EliminarEstancia(estancia.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+
+</div>
+
+@code {
+
+    private List<Estancia> estancias = new();
+    private List<Mascota> mascotas = new();
+
+    private Estancia nuevaEstancia = new();
+
+    protected override void OnInitialized()
+    {
+        CargarDatos();
+    }
+
+    private void CargarDatos()
+    {
+        estancias = Db.Estancias
+            .Include(e => e.Mascota)
+            .ToList();
+
+        mascotas = Db.Mascotas.ToList();
+    }
+
+    private async Task GuardarEstancia()
+    {
+        Db.Estancias.Add(nuevaEstancia);
+
+        await Db.SaveChangesAsync();
+
+        nuevaEstancia = new Estancia();
+
+        CargarDatos();
+    }
+
+    private Estancia? estanciaEnEdicion;
+
+    private void EditarEstancia(Estancia e)
+    {
+        estanciaEnEdicion = new Estancia
+        {
+            Id = e.Id,
+            MascotaId = e.MascotaId,
+            FechaIngreso = e.FechaIngreso,
+            FechaEgreso = e.FechaEgreso,
+            Observaciones = e.Observaciones
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        estanciaEnEdicion = null;
+    }
+
+    private async Task ActualizarEstancia()
+    {
+        if (estanciaEnEdicion is null) return;
+
+        var existente = Db.Estancias.Find(estanciaEnEdicion.Id);
+        if (existente is not null)
+        {
+            existente.MascotaId = estanciaEnEdicion.MascotaId;
+            existente.FechaIngreso = estanciaEnEdicion.FechaIngreso;
+            existente.FechaEgreso = estanciaEnEdicion.FechaEgreso;
+            existente.Observaciones = estanciaEnEdicion.Observaciones;
+
+            await Db.SaveChangesAsync();
+        }
+
+        estanciaEnEdicion = null;
+        CargarDatos();
+    }
+
+    private async Task EliminarEstancia(int id)
+    {
+        var e = Db.Estancias.Find(id);
+        if (e is null) return;
+
+        Db.Estancias.Remove(e);
+        await Db.SaveChangesAsync();
+
+        CargarDatos();
+    }
+}

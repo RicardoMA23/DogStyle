@@ -1,0 +1,133 @@
+﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Context
+
+<PageTitle>Dashboard</PageTitle>
+
+<h2>Dashboard Veterinaria</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias en curso</h4>
+
+            @if (estanciasEnCurso.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasEnCurso)
+                    {
+                        <li>
+                            <button type="button" class="link-button" @onclick="() => MostrarDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </button>
+                        </li>
+                    }
+
+@if (estanciaSeleccionada is not null)
+{
+    <div class="modal-backdrop" @onclick="CerrarDetalles">
+        <div class="modal-card" @onclick:stopPropagation>
+            <h3>Detalles de la estancia</h3>
+            <p><strong>Mascota:</strong> @estanciaSeleccionada.Mascota?.Nombre</p>
+            <p><strong>Ingreso:</strong> @estanciaSeleccionada.FechaIngreso.ToString("g")</p>
+            <p><strong>Salida:</strong> @(estanciaSeleccionada.FechaEgreso?.ToString("g") ?? "(sin definir)")</p>
+            <p><strong>Observaciones / Cuidados:</strong></p>
+            <p>@estanciaSeleccionada.Observaciones</p>
+
+            @if (estanciaSeleccionada.Cuidados?.Any() ?? false)
+            {
+                <h4>Cuidados programados</h4>
+                <ul>
+                    @foreach (var c in estanciaSeleccionada.Cuidados)
+                    {
+                        <li>@(c.Hora?.ToString("g") ?? "(hora no definida)") - @c.Descripcion</li>
+                    }
+                </ul>
+            }
+
+            <button class="btn" @onclick="CerrarDetalles">Cerrar</button>
+        </div>
+    </div>
+}
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias activas.</p>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias agendadas</h4>
+
+            @if (estanciasAgendadas.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasAgendadas)
+                    {
+                        <li>
+                            <button type="button" class="link-button" @onclick="() => MostrarDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Fecha de ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias programadas.</p>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private List<Estancia> estanciasEnCurso = new();
+    private List<Estancia> estanciasAgendadas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoy = DateTime.Today;
+
+        estanciasEnCurso = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e =>
+                e.FechaIngreso <= hoy &&
+                (e.FechaEgreso == null || e.FechaEgreso >= hoy))
+            .ToListAsync();
+
+        estanciasAgendadas = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e => e.FechaIngreso > hoy)
+            .ToListAsync();
+    }
+
+    private Estancia? estanciaSeleccionada;
+
+    private async Task MostrarDetalles(int estanciaId)
+    {
+        // cargar la estancia completa desde la BD para asegurar Mascota y Cuidados
+        estanciaSeleccionada = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Include(e => e.Cuidados)
+            .FirstOrDefaultAsync(e => e.Id == estanciaId);
+
+        StateHasChanged();
+    }
+
+    private void CerrarDetalles()
+    {
+        estanciaSeleccionada = null;
+    }
+}

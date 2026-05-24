@@ -1,0 +1,180 @@
+﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Context
+
+<PageTitle>Dashboard</PageTitle>
+
+<h2>Dashboard Veterinaria</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias en curso</h4>
+
+            @if (estanciasEnCurso.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasEnCurso)
+                    {
+                        <li>
+                            <button type="button" class="link-button" @onclick="() => MostrarDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </button>
+                        </li>
+                    }
+
+@if (estanciaSeleccionada is not null)
+{
+    <div class="modal-backdrop" @onclick="CerrarDetalles">
+        <div class="modal-card" @onclick:stopPropagation>
+            <h3>Detalles de la estancia</h3>
+            <p><strong>Mascota:</strong> @estanciaSeleccionada.Mascota?.Nombre</p>
+            <p><strong>Ingreso:</strong> @estanciaSeleccionada.FechaIngreso.ToString("g")</p>
+            <p><strong>Salida:</strong> @(estanciaSeleccionada.FechaEgreso?.ToString("g") ?? "(sin definir)")</p>
+            <p><strong>Observaciones / Cuidados:</strong></p>
+            <p>@estanciaSeleccionada.Observaciones</p>
+
+            @if (estanciaSeleccionada.Cuidados?.Any() ?? false)
+            {
+                <h4>Cuidados programados</h4>
+                <ul>
+                    @foreach (var c in estanciaSeleccionada.Cuidados)
+                    {
+                        <li>@(c.Hora?.ToString("g") ?? "(hora no definida)") - @c.Descripcion</li>
+                    }
+                </ul>
+            }
+
+            <button class="btn" @onclick="CerrarDetalles">Cerrar</button>
+        </div>
+
+<div class="card">
+    <h4>Calendario</h4>
+
+    <div class="calendar">
+        <div class="calendar-header">
+            <button class="btn" @onclick="PrevMonth">‹</button>
+            <div class="month-label">@calendarMonth.ToString("MMMM yyyy")</div>
+            <button class="btn" @onclick="NextMonth">›</button>
+        </div>
+
+        <div class="calendar-grid">
+            <div class="calendar-weekdays">
+                <div>Dom</div>
+                <div>Lun</div>
+                <div>Mar</div>
+                <div>Mié</div>
+                <div>Jue</div>
+                <div>Vie</div>
+                <div>Sáb</div>
+            </div>
+
+            <div class="calendar-days">
+                @{
+                    var firstOfMonth = new DateTime(calendarMonth.Year, calendarMonth.Month, 1);
+                    int startOffset = (int)firstOfMonth.DayOfWeek; // Sunday = 0
+                    var cellDate = firstOfMonth.AddDays(-startOffset);
+
+                    for (int i = 0; i < 42; i++)
+                    {
+                        var d = cellDate.AddDays(i);
+                        var inMonth = d.Month == calendarMonth.Month;
+                        var hasEvent = eventDates.Contains(d.Date);
+                        <div class="calendar-day @(inMonth ? "in-month" : "out-month")">
+                            <div class="day-number">@d.Day</div>
+                            @if (hasEvent)
+                            {
+                                <div class="event-dot"></div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+    </div>
+}
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias activas.</p>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias agendadas</h4>
+
+            @if (estanciasAgendadas.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasAgendadas)
+                    {
+                        <li>
+                            <button type="button" class="link-button" @onclick="() => MostrarDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Fecha de ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias programadas.</p>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private List<Estancia> estanciasEnCurso = new();
+    private List<Estancia> estanciasAgendadas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoy = DateTime.Today;
+
+        estanciasEnCurso = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e =>
+                e.FechaIngreso <= hoy &&
+                (e.FechaEgreso == null || e.FechaEgreso >= hoy))
+            .ToListAsync();
+
+        estanciasAgendadas = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e => e.FechaIngreso > hoy)
+            .ToListAsync();
+    }
+
+    private Estancia? estanciaSeleccionada;
+
+    private async Task MostrarDetalles(int estanciaId)
+    {
+        // cargar la estancia completa desde la BD para asegurar Mascota y Cuidados
+        estanciaSeleccionada = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Include(e => e.Cuidados)
+            .FirstOrDefaultAsync(e => e.Id == estanciaId);
+
+        StateHasChanged();
+    }
+
+    private void CerrarDetalles()
+    {
+        estanciaSeleccionada = null;
+    }
+}

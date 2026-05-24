@@ -1,0 +1,151 @@
+﻿@page "/"
+@using Microsoft.EntityFrameworkCore
+@using PIASISTINFO.Data
+@using PIASISTINFO.Models
+@inject AppDbContext Context
+
+<PageTitle>Dashboard</PageTitle>
+
+<h2>Dashboard Veterinaria</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias en curso</h4>
+
+            @if (estanciasEnCurso.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasEnCurso)
+                    {
+                        <li>
+                            <a href="#" @onclick="async () => await ShowDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Ingreso: @estancia.FechaIngreso.ToShortDateString()
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias activas.</p>
+            }
+        </div>
+
+@* Modal de detalles *@
+@if (mostrarModal)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles de la estancia</h5>
+                    <button type="button" class="btn-close" @onclick="OcultarModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (detalleEstancia != null)
+                    {
+                        <p><strong>Mascota:</strong> @detalleEstancia.Mascota?.Nombre</p>
+                        <p><strong>Ingreso:</strong> @detalleEstancia.FechaIngreso.ToShortDateString()</p>
+                        <p><strong>Egreso:</strong> @(detalleEstancia.FechaEgreso?.ToShortDateString() ?? "-")</p>
+                        <p><strong>Notas:</strong> @detalleEstancia.Observaciones</p>
+                        @if (detalleEstancia.Cuidados != null && detalleEstancia.Cuidados.Any())
+                        {
+                            <h6>Cuidados</h6>
+                            <ul>
+                                @foreach (var c in detalleEstancia.Cuidados)
+                                {
+                                    <li>@c.Descripcion</li>
+                                }
+                            </ul>
+                        }
+                    }
+                    else
+                    {
+                        <p>Cargando...</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="OcultarModal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h4>Estancias agendadas</h4>
+
+            @if (estanciasAgendadas.Any())
+            {
+                <ul>
+                    @foreach (var estancia in estanciasAgendadas)
+                    {
+                        <li>
+                            <a href="#" @onclick="async () => await ShowDetalles(estancia.Id)">
+                                <strong>@estancia.Mascota.Nombre</strong>
+                                <br />
+                                Fecha de ingreso:
+                                @estancia.FechaIngreso.ToShortDateString()
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No hay estancias programadas.</p>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private List<Estancia> estanciasEnCurso = new();
+    private List<Estancia> estanciasAgendadas = new();
+    private Estancia? detalleEstancia;
+    private bool mostrarModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoy = DateTime.Today;
+
+        estanciasEnCurso = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e =>
+                e.FechaIngreso <= hoy &&
+                (e.FechaEgreso == null || e.FechaEgreso >= hoy))
+            .ToListAsync();
+
+        estanciasAgendadas = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Where(e => e.FechaIngreso > hoy)
+            .ToListAsync();
+    }
+
+    private async Task ShowDetalles(int id)
+    {
+        detalleEstancia = await Context.Estancias
+            .Include(e => e.Mascota)
+            .Include(e => e.Cuidados)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        mostrarModal = true;
+        StateHasChanged();
+    }
+
+    private void OcultarModal()
+    {
+        mostrarModal = false;
+        detalleEstancia = null;
+    }
+}

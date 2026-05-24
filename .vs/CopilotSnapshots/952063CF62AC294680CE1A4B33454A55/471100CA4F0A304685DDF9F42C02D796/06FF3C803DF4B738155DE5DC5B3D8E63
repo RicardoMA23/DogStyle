@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+
+<div class="app-container">
+    <header class="app-header">
+        <h1>Pensión Canina - Gestión de Estancias</h1>
+    </header>
+
+    <div class="app-layout">
+        <aside class="app-nav">
+            <Shared.NavMenu />
+        </aside>
+
+        <main class="app-main">
+            @Body
+        </main>
+    </div>
+
+    <footer class="app-footer">
+        © Pensión Canina - Gestión de estancias
+    </footer>
+</div>
+
+<div id="blazor-error-ui">
+    Ha ocurrido un error inesperado.
+    <a href="" class="reload">Recargar</a>
+    <a class="dismiss">🗙</a>
+</div>
